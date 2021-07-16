@@ -19,15 +19,13 @@
 #ifndef _TSL2591_H_
 #define _TSL2591_H_
 
-#include <Adafruit_Sensor.h>
-#include <Arduino.h>
-#include <Wire.h>
+#include "mbed.h"
 
 #define TSL2591_VISIBLE (2)      ///< (channel 0) - (channel 1)
 #define TSL2591_INFRARED (1)     ///< channel 1
 #define TSL2591_FULLSPECTRUM (0) ///< channel 0
 
-#define TSL2591_ADDR (0x29) ///< Default I2C address
+#define TSL2591_ADDR (0x29*2) ///< Default I2C address
 
 #define TSL2591_COMMAND_BIT                                                    \
   (0xA0) ///< 1010 0000: bits 7 and 5 for 'command normal'
@@ -128,12 +126,11 @@ typedef enum {
    Light Sensor
 */
 /**************************************************************************/
-class Adafruit_TSL2591 : public Adafruit_Sensor {
+class Adafruit_TSL2591 {
 public:
   Adafruit_TSL2591(int32_t sensorID = -1);
 
-  boolean begin(TwoWire *theWire, uint8_t addr = TSL2591_ADDR);
-  boolean begin(uint8_t addr = TSL2591_ADDR);
+  bool begin(I2C &i2c, uint8_t addr = TSL2591_ADDR);
   void enable(void);
   void disable(void);
 
@@ -152,12 +149,10 @@ public:
                          tsl2591Persist_t persist);
   uint8_t getStatus();
 
-  /* Unified Sensor API Functions */
-  bool getEvent(sensors_event_t *);
-  void getSensor(sensor_t *);
-
 private:
-  TwoWire *_i2c;
+  I2C *_i2c;
+  uint8_t _buf[8];
+  uint8_t i2cResult;
 
   void write8(uint8_t r);
   void write8(uint8_t r, uint8_t v);
@@ -169,6 +164,6 @@ private:
   int32_t _sensorID;
   uint8_t _addr;
 
-  boolean _initialized;
+  bool _initialized;
 };
 #endif

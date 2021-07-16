@@ -73,9 +73,8 @@ Adafruit_TSL2591::Adafruit_TSL2591(int32_t sensorID) {
     @returns True if a TSL2591 is found, false on any failure
 */
 /**************************************************************************/
-boolean Adafruit_TSL2591::begin(TwoWire *theWire, uint8_t addr) {
-  _i2c = theWire;
-  _i2c->begin();
+bool Adafruit_TSL2591::begin(I2C &i2c, uint8_t addr) {
+  _i2c = &i2c;
   _addr = addr;
 
   /*
@@ -104,14 +103,6 @@ boolean Adafruit_TSL2591::begin(TwoWire *theWire, uint8_t addr) {
 
   return true;
 }
-/**************************************************************************/
-/*!
-    @brief   Setups the I2C interface and hardware, identifies if chip is found
-    @param   addr The I2C adress of the sensor (Default 0x29)
-    @returns True if a TSL2591 is found, false on any failure
-*/
-/**************************************************************************/
-boolean Adafruit_TSL2591::begin(uint8_t addr) { return begin(&Wire, addr); }
 
 /**************************************************************************/
 /*!
@@ -119,10 +110,8 @@ boolean Adafruit_TSL2591::begin(uint8_t addr) { return begin(&Wire, addr); }
 */
 /**************************************************************************/
 void Adafruit_TSL2591::enable(void) {
-  if (!_initialized) {
-    if (!begin()) {
-      return;
-    }
+  if(!_initialized) {
+    return;
   }
 
   // Enable the device by setting the control bit to 0x01
@@ -137,10 +126,8 @@ void Adafruit_TSL2591::enable(void) {
 */
 /**************************************************************************/
 void Adafruit_TSL2591::disable(void) {
-  if (!_initialized) {
-    if (!begin()) {
-      return;
-    }
+  if(!_initialized) {
+    return;
   }
 
   // Disable the device by setting the control bit to 0x00
@@ -155,10 +142,8 @@ void Adafruit_TSL2591::disable(void) {
 */
 /**************************************************************************/
 void Adafruit_TSL2591::setGain(tsl2591Gain_t gain) {
-  if (!_initialized) {
-    if (!begin()) {
-      return;
-    }
+  if(!_initialized) {
+    return;
   }
 
   enable();
@@ -182,10 +167,8 @@ tsl2591Gain_t Adafruit_TSL2591::getGain() { return _gain; }
 */
 /**************************************************************************/
 void Adafruit_TSL2591::setTiming(tsl2591IntegrationTime_t integration) {
-  if (!_initialized) {
-    if (!begin()) {
-      return;
-    }
+  if(!_initialized) {
+    return;
   }
 
   enable();
@@ -292,10 +275,8 @@ float Adafruit_TSL2591::calculateLux(uint16_t ch0, uint16_t ch1) {
 */
 /**************************************************************************/
 uint32_t Adafruit_TSL2591::getFullLuminosity(void) {
-  if (!_initialized) {
-    if (!begin()) {
-      return 0;
-    }
+  if(!_initialized) {
+     return 0;
   }
 
   // Enable the device
@@ -303,7 +284,7 @@ uint32_t Adafruit_TSL2591::getFullLuminosity(void) {
 
   // Wait x ms for ADC to complete
   for (uint8_t d = 0; d <= _integration; d++) {
-    delay(120);
+    thread_sleep_for(120);
   }
 
   // CHAN0 must be read before CHAN1
@@ -360,10 +341,8 @@ uint16_t Adafruit_TSL2591::getLuminosity(uint8_t channel) {
 void Adafruit_TSL2591::registerInterrupt(
     uint16_t lowerThreshold, uint16_t upperThreshold,
     tsl2591Persist_t persist = TSL2591_PERSIST_ANY) {
-  if (!_initialized) {
-    if (!begin()) {
-      return;
-    }
+  if(!_initialized) {
+    return;
   }
 
   enable();
@@ -385,10 +364,8 @@ void Adafruit_TSL2591::registerInterrupt(
 */
 /**************************************************************************/
 void Adafruit_TSL2591::clearInterrupt() {
-  if (!_initialized) {
-    if (!begin()) {
-      return;
-    }
+  if(!_initialized) {
+    return;
   }
 
   enable();
@@ -404,10 +381,8 @@ void Adafruit_TSL2591::clearInterrupt() {
 */
 /**************************************************************************/
 uint8_t Adafruit_TSL2591::getStatus(void) {
-  if (!_initialized) {
-    if (!begin()) {
-      return 0;
-    }
+  if(!_initialized) {
+    return 0;
   }
 
   // Enable the device
@@ -418,87 +393,30 @@ uint8_t Adafruit_TSL2591::getStatus(void) {
   return x;
 }
 
-/************************************************************************/
-/*!
-    @brief  Gets the most recent sensor event
-    @param  event Pointer to Adafruit_Sensor sensors_event_t object that will be
-   filled with sensor data
-    @return True on success, False on failure
-*/
-/**************************************************************************/
-bool Adafruit_TSL2591::getEvent(sensors_event_t *event) {
-  uint16_t ir, full;
-  uint32_t lum = getFullLuminosity();
-  /* Early silicon seems to have issues when there is a sudden jump in */
-  /* light levels. :( To work around this for now sample the sensor 2x */
-  lum = getFullLuminosity();
-  ir = lum >> 16;
-  full = lum & 0xFFFF;
 
-  /* Clear the event */
-  memset(event, 0, sizeof(sensors_event_t));
-
-  event->version = sizeof(sensors_event_t);
-  event->sensor_id = _sensorID;
-  event->type = SENSOR_TYPE_LIGHT;
-  event->timestamp = millis();
-
-  /* Calculate the actual lux value */
-  /* 0 = sensor overflow (too much light) */
-  event->light = calculateLux(full, ir);
-
-  return true;
-}
-
-/**************************************************************************/
-/*!
-    @brief  Gets the overall sensor_t data including the type, range and
-   resulution
-    @param  sensor Pointer to Adafruit_Sensor sensor_t object that will be
-   filled with sensor type data
-*/
-/**************************************************************************/
-void Adafruit_TSL2591::getSensor(sensor_t *sensor) {
-  /* Clear the sensor_t object */
-  memset(sensor, 0, sizeof(sensor_t));
-
-  /* Insert the sensor name in the fixed length char array */
-  strncpy(sensor->name, "TSL2591", sizeof(sensor->name) - 1);
-  sensor->name[sizeof(sensor->name) - 1] = 0;
-  sensor->version = 1;
-  sensor->sensor_id = _sensorID;
-  sensor->type = SENSOR_TYPE_LIGHT;
-  sensor->min_delay = 0;
-  sensor->max_value = 88000.0;
-  sensor->min_value = 0.0;
-  sensor->resolution = 0.001;
-}
 /*******************************************************/
 
 uint8_t Adafruit_TSL2591::read8(uint8_t reg) {
   uint8_t x;
 
-  _i2c->beginTransmission(_addr);
-  _i2c->write(reg);
-  _i2c->endTransmission();
+  _buf[0] = reg;
+  i2cResult = _i2c->write(_addr, (char*)_buf, 1);
 
-  _i2c->requestFrom(_addr, 1);
-  x = _i2c->read();
+  i2cResult = _i2c->read(_addr, (char*)_buf, 1);
 
-  return x;
+  return _buf[0];
 }
 
 uint16_t Adafruit_TSL2591::read16(uint8_t reg) {
   uint16_t x;
   uint16_t t;
 
-  _i2c->beginTransmission(_addr);
-  _i2c->write(reg);
-  _i2c->endTransmission();
+  _buf[0] = reg;
+  i2cResult = _i2c->write(_addr, (char*)_buf, 1);
 
-  _i2c->requestFrom(_addr, 2);
-  t = _i2c->read();
-  x = _i2c->read();
+  i2cResult = _i2c->read(_addr, (char*)_buf, 2);
+  t = _buf[0];
+  x = _buf[1];
 
   x <<= 8;
   x |= t;
@@ -506,14 +424,12 @@ uint16_t Adafruit_TSL2591::read16(uint8_t reg) {
 }
 
 void Adafruit_TSL2591::write8(uint8_t reg, uint8_t value) {
-  _i2c->beginTransmission(_addr);
-  _i2c->write(reg);
-  _i2c->write(value);
-  _i2c->endTransmission();
+  _buf[0] = reg;
+  _buf[1] = value;
+  i2cResult = _i2c->write(_addr, (char*)_buf, 2);
 }
 
 void Adafruit_TSL2591::write8(uint8_t reg) {
-  _i2c->beginTransmission(_addr);
-  _i2c->write(reg);
-  _i2c->endTransmission();
+  _buf[0] = reg;
+  i2cResult = _i2c->write(_addr, (char*)_buf, 1);
 }
