@@ -143,6 +143,8 @@ public:
   tsl2591IntegrationTime_t getTiming();
   tsl2591Gain_t getGain();
 
+  uint8_t getID();
+
   // Interrupt
   void clearInterrupt(void);
   void registerInterrupt(uint16_t lowerThreshold, uint16_t upperThreshold,
