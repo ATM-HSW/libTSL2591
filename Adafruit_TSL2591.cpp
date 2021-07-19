@@ -138,15 +138,15 @@ void Adafruit_TSL2591::disable(void) {
 /**************************************************************************/
 /*!
     @brief Retrieves part and revision code from TSL2561
-	         Sets ID to part ID (see datasheet)
-	         Returns true (1) if successful, false (0) if there was an I2C error
+           Sets ID to part ID (see datasheet)
+           Returns true (1) if successful, false (0) if there was an I2C error
 */
 /**************************************************************************/
 uint8_t Adafruit_TSL2591::getID() {
   if(!_initialized) {
     return 0;
   }
-	// Get ID byte from ID register
+  // Get ID byte from ID register
   return read8(TSL2591_COMMAND_BIT | TSL2591_REGISTER_DEVICE_ID);
 }
 
